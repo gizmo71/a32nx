@@ -10,8 +10,12 @@ import { Geometry } from '../Geometry';
 import { GuidanceComponent } from '../GuidanceComponent';
 import { ClimbPathBuilder } from './climb/ClimbPathBuilder';
 import { ClimbProfileBuilderResult } from './climb/ClimbProfileBuilderResult';
+import { Fmgc } from '../GuidanceController';
+import { FlightPlanManager } from '@fmgc/flightplanning/FlightPlanManager';
 
 export class VnavDriver implements GuidanceComponent {
+    climbPathBuilder: ClimbPathBuilder;
+
     currentClimbProfile: ClimbProfileBuilderResult;
 
     currentDescentProfile: TheoreticalDescentPathCharacteristics
@@ -20,15 +24,21 @@ export class VnavDriver implements GuidanceComponent {
 
     constructor(
         private readonly guidanceController: GuidanceController,
+        fmgc: Fmgc,
+        flightPlanManager: FlightPlanManager,
     ) {
+        this.climbPathBuilder = new ClimbPathBuilder(fmgc, flightPlanManager);
+    }
+
+    acceptMultipleLegGeometry(geometry: Geometry) {
+        this.climbPathBuilder.update();
+
+
+        this.computeVerticalProfile(geometry);
     }
 
     init(): void {
         console.log('[FMGC/Guidance] VnavDriver initialized!');
-    }
-
-    acceptMultipleLegGeometry(geometry: Geometry) {
-        this.computeVerticalProfile(geometry);
     }
 
     lastCruiseAltitude: Feet = 0;
@@ -49,7 +59,8 @@ export class VnavDriver implements GuidanceComponent {
     private computeVerticalProfile(geometry: Geometry) {
         if (geometry.legs.size > 0) {
             if (VnavConfig.VNAV_CALCULATE_CLIMB_PROFILE) {
-                this.currentClimbProfile = ClimbPathBuilder.computeClimbPath(geometry);
+                this.currentClimbProfile = this.climbPathBuilder.computeClimbPath(geometry);
+                console.log(this.currentClimbProfile);
             }
             this.currentApproachProfile = DecelPathBuilder.computeDecelPath(geometry);
             this.currentDescentProfile = DescentBuilder.computeDescentPath(geometry, this.currentApproachProfile);

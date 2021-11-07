@@ -12,6 +12,14 @@ import { VnavDriver } from './vnav/VnavDriver';
 // How often the (milliseconds)
 const GEOMETRY_RECOMPUTATION_TIMER = 5_000;
 
+export interface Fmgc {
+    getZeroFuelWeight(): number;
+    getFOB(): number;
+    getV2Speed(): number;
+    getTropoPause(): number;
+    getManagedClimbSpeed(): number;
+}
+
 export class GuidanceController {
     public flightPlanManager: FlightPlanManager;
 
@@ -37,12 +45,12 @@ export class GuidanceController {
 
     public currentPseudoWaypoints: PseudoWaypoint[] = [];
 
-    constructor(flightPlanManager: FlightPlanManager, guidanceManager: GuidanceManager) {
+    constructor(flightPlanManager: FlightPlanManager, guidanceManager: GuidanceManager, fmgc: Fmgc) {
         this.flightPlanManager = flightPlanManager;
         this.guidanceManager = guidanceManager;
 
         this.lnavDriver = new LnavDriver(this);
-        this.vnavDriver = new VnavDriver(this);
+        this.vnavDriver = new VnavDriver(this, fmgc, flightPlanManager);
         this.pseudoWaypoints = new PseudoWaypoints(this);
     }
 

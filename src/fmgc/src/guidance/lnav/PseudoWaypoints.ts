@@ -10,6 +10,7 @@ import { GuidanceController } from '@fmgc/guidance/GuidanceController';
 import { LateralMode } from '@shared/autopilot';
 import { Type1Transition } from '@fmgc/guidance/lnav/transitions/Type1';
 
+const PWP_IDENT_TOC = '(T/C)';
 const PWP_IDENT_TOD = '(T/D)';
 const PWP_IDENT_DECEL = '(DECEL)';
 const PWP_IDENT_FLAP1 = '(FLAP1)';
@@ -46,6 +47,24 @@ export class PseudoWaypoints implements GuidanceComponent {
         }
 
         const newPseudoWaypoints: PseudoWaypoint[] = [];
+
+        if (VnavConfig.VNAV_CALCULATE_CLIMB_PROFILE) {
+            const toc = PseudoWaypoints.pointFromEndOfPath(geometry, this.guidanceController.vnavDriver.currentClimbProfile.distanceToTopOfClimbFromEnd);
+
+            if (toc) {
+                const [efisSymbolLla, distanceFromLegTermination, alongLegIndex] = toc;
+
+                newPseudoWaypoints.push({
+                    ident: PWP_IDENT_TOC,
+                    alongLegIndex,
+                    distanceFromLegTermination,
+                    efisSymbolFlag: NdSymbolTypeFlags.PwpTopOfClimb,
+                    efisSymbolLla,
+                    displayedOnMcdu: true,
+                    stats: PseudoWaypoints.computePseudoWaypointStats(PWP_IDENT_TOC, geometry.legs.get(alongLegIndex), distanceFromLegTermination),
+                });
+            }
+        }
 
         if (VnavConfig.VNAV_EMIT_TOD) {
             const tod = PseudoWaypoints.pointFromEndOfPath(geometry, this.guidanceController.vnavDriver.currentDescentProfile.tod, DEBUG && PWP_IDENT_TOD);
