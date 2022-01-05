@@ -25,6 +25,7 @@ path.join(__dirname, 'client/build/mcdu-r2-c.png');
 path.join(__dirname, '../../node_modules/pdf-to-printer/dist/SumatraPDF.exe');
 path.join(__dirname, '../../node_modules/linebreak/src/classes.trie');
 path.join(__dirname, '../../node_modules/pdfkit/js/data/Helvetica.afm');
+path.join(__dirname, '../../node_modules/pdfkit/js/data/Courier-Bold.afm');
 
 const sumatraPdfPath = path.join(os.tmpdir(), 'SumatraPDF.exe');
 fs.copyFileSync(path.join(__dirname, '../../node_modules/pdf-to-printer/dist/SumatraPDF.exe'), sumatraPdfPath);
@@ -53,6 +54,7 @@ let skipPrinter = false;
 let httpPort = 8125;
 let websocketPort = 8080;
 let debug = false;
+let pos58 = false;
 
 const args = [...process.argv];
 args.splice(0, 2);
@@ -64,6 +66,10 @@ for (const arg of args) {
     }
     if (arg.startsWith('--printer=')) {
         printerName = arg.split('=')[1];
+        continue;
+    }
+    if (arg === '--pos58') {
+        pos58 = true;
         continue;
     }
     if (arg.startsWith('--http-port=')) {
@@ -230,13 +236,14 @@ function start() {
                 if (message.startsWith('print:')) {
                     const { lines } = JSON.parse(message.substring(6));
                     if (selectedPrinter) {
-                        const doc = new PDFDocument();
+                        const doc = new PDFDocument({ autoFirstPage: false });
                         const pdfPath = path.join(os.tmpdir(), 'a32nxPrint.pdf');
                         doc.pipe(fs.createWriteStream(pdfPath));
-                        doc.font(path.join(__dirname, 'client/build/ECAMFontRegular.ttf'));
-                        doc.fontSize(19);
+                        doc.addPage({ margin: pos58 ? 0 : 36 });
+                        doc.font(pos58 ? 'Courier-Bold' : path.join(__dirname, 'client/build/ECAMFontRegular.ttf'));
+                        doc.fontSize(pos58 ? 48 : 19);
                         for (let i = 0; i < lines.length; i++) {
-                            doc.text(lines[i], 36, 36 + (19 * i));
+                            doc.text(lines[i]);
                         }
                         doc.end();
                         print.print(pdfPath, { printer: selectedPrinter.name, sumatraPdfPath });
@@ -261,6 +268,7 @@ function printUsage() {
     console.log('-h, --help           print command line options');
     console.log('--http-port=...      sets port for http server (default: 8125)');
     console.log('--no-printer         skips prompt to select printer');
+    console.log('--pos58              enables output optimized for thermal printers');
     console.log('--printer=...        enables printing to the specified printer');
     console.log('--websocket-port=... sets port for websocket server (default: 8080)');
 }
